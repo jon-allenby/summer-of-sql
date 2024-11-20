@@ -1,0 +1,9 @@
+//01
+
+select *
+from crime_scene_report
+where date = 20180115
+and type = 'murder'
+
+//result
+
