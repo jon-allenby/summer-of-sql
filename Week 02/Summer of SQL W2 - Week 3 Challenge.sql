@@ -170,3 +170,68 @@ Transactions_CTE AS
 SELECT *
 FROM Transactions_CTE AS TR
 JOIN Targets_CTE AS TA ON TR.Quarter = TO_NUMBER(REPLACE(CTE.Quarter,'Q','')); -- Error: invalid identifier 'TR.QUARTER' (line 172)
+
+-- Not sure why the below works finally.
+
+WITH Targets_CTE AS 
+(
+    SELECT online_or_in_person,
+        "Quarterly Targets",
+        "Quarter"
+    FROM PD2023_WK03_TARGETS
+    UNPIVOT INCLUDE NULLS ("Quarterly Targets" for "Quarter" in (Q1,Q2,Q3,Q4))
+)
+SELECT *
+FROM PD2023_WK01 AS PD
+JOIN TARGETS_CTE AS CTE ON EXTRACT(quarter FROM DATE(split_part(transaction_date,' ',1),'dd/mm/yyyy')) = TO_NUMBER(REPLACE("Quarter",'Q',''));
+
+-- Okay, the below also works. Not sure why "Value" becomes "VALUE" in the output.
+
+WITH Targets_CTE AS 
+(
+    SELECT online_or_in_person,
+        "Quarterly Targets",
+        "Quarter"
+    FROM PD2023_WK03_TARGETS
+    UNPIVOT INCLUDE NULLS ("Quarterly Targets" for "Quarter" in (Q1,Q2,Q3,Q4))
+)
+SELECT 
+    SUM(VALUE) AS Value,
+    CASE 
+        WHEN PD.online_or_in_person = 1 
+            THEN 'Online'
+            ELSE 'In-Person'
+    END AS "Online or In-Person",
+    TO_NUMBER(REPLACE("Quarter",'Q','')) AS "Quarter"
+FROM PD2023_WK01 AS PD
+JOIN TARGETS_CTE AS CTE ON 
+    EXTRACT(quarter FROM DATE(split_part(transaction_date,' ',1),'dd/mm/yyyy')) = TO_NUMBER(REPLACE("Quarter",'Q',''))
+    AND "Online or In-Person" = CTE.online_or_in_person 
+WHERE SPLIT_PART(transaction_code,'-',1) = 'DSB'
+GROUP BY PD.ONLINE_OR_IN_PERSON, "Quarter";
+
+-- Finally trying to add the variance
+
+WITH Targets_CTE AS 
+(
+    SELECT online_or_in_person,
+        "Quarterly Targets",
+        "Quarter"
+    FROM PD2023_WK03_TARGETS
+    UNPIVOT INCLUDE NULLS ("Quarterly Targets" for "Quarter" in (Q1,Q2,Q3,Q4))
+)
+SELECT 
+    SUM(VALUE) AS Value,
+    CASE 
+        WHEN PD.online_or_in_person = 1 
+            THEN 'Online'
+            ELSE 'In-Person'
+    END AS "Online or In-Person",
+    TO_NUMBER(REPLACE("Quarter",'Q','')) AS "Quarter",
+    SUM(Value) - AVG("Quarterly Targets")::int AS "Variance to Target"  -- ::int was a new one to me.
+FROM PD2023_WK01 AS PD
+JOIN TARGETS_CTE AS CTE ON 
+    EXTRACT(quarter FROM DATE(split_part(transaction_date,' ',1),'dd/mm/yyyy')) = TO_NUMBER(REPLACE("Quarter",'Q',''))
+    AND "Online or In-Person" = CTE.online_or_in_person 
+WHERE SPLIT_PART(transaction_code,'-',1) = 'DSB'
+GROUP BY PD.ONLINE_OR_IN_PERSON, "Quarter";
