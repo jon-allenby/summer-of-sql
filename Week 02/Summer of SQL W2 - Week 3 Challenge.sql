@@ -70,3 +70,25 @@ JOIN (
     ON TR.ONLINE_OR_IN_PERSON = P.online_or_in_person
 WHERE SPLIT_PART(transaction_code,'-',1) = 'DSB'
 GROUP BY TR.ONLINE_OR_IN_PERSON, "Quarter";
+
+-- Well that failed. Learning CTEs
+
+WITH Targets_CTE AS
+(
+    SELECT online_or_in_person,
+        "Quarterly Targets",
+        "Quarter" 
+    FROM PD2023_WK03_TARGETS AS TA
+    UNPIVOT INCLUDE NULLS ("Quarterly Targets" for "Quarter" in (Q1,Q2,Q3,Q4)) 
+)
+SELECT CASE 
+        WHEN TR.online_or_in_person = 1 
+            THEN 'Online'
+            ELSE 'In-Person'
+    END AS "Online or In-Person",
+    EXTRACT( quarter FROM DATE(split_part(transaction_date,' ',1),'dd/mm/yyyy')) AS "Quarter",
+    SUM(value) AS Value
+FROM PD2023_WK01 AS TR
+JOIN Targets_CTE AS CTE ON TR.ONLINE_OR_IN_PERSON = CTE.online_or_in_person
+WHERE SPLIT_PART(transaction_code,'-',1) = 'DSB'
+GROUP BY TR.ONLINE_OR_IN_PERSON, TR.Quarter;  --Error: invalid identifier 'TR.QUARTER' (line 94)
