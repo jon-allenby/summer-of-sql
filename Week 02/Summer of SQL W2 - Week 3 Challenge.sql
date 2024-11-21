@@ -125,3 +125,4 @@ WITH Targets_CTE AS
 SELECT online_or_in_person,
     "Quarterly Targets",
     TO_NUMBER(REPLACE("Quarter",'Q','')) AS "Quarter"
+FROM TARGETS_CTE;
