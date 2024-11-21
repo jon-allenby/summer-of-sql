@@ -92,3 +92,36 @@ FROM PD2023_WK01 AS TR
 JOIN Targets_CTE AS CTE ON TR.ONLINE_OR_IN_PERSON = CTE.online_or_in_person
 WHERE SPLIT_PART(transaction_code,'-',1) = 'DSB'
 GROUP BY TR.ONLINE_OR_IN_PERSON, TR.Quarter;  --Error: invalid identifier 'TR.QUARTER' (line 94)
+
+-- Lets simplify.
+
+WITH Targets_CTE AS
+(
+    SELECT online_or_in_person,
+        "Quarterly Targets",
+        "Quarter" 
+    FROM PD2023_WK03_TARGETS AS TA
+    UNPIVOT INCLUDE NULLS ("Quarterly Targets" for "Quarter" in (Q1,Q2,Q3,Q4)) 
+) 
+SELECT *,
+    CASE 
+        WHEN TR.online_or_in_person = 1 
+            THEN 'Online'
+            ELSE 'In-Person'
+    END AS "Online or In-Person 2",
+FROM PD2023_WK01 AS TR
+JOIN Targets_CTE AS CTE ON TR."Online or In-Person 2" = CTE.online_or_in_person; --Error: invalid identifier 'TR."Online or In-Person 2"' (line 113)
+
+-- Going back and fixing the Quarters to join on Quarters
+
+WITH Targets_CTE AS 
+(
+    SELECT online_or_in_person,
+        "Quarterly Targets",
+        "Quarter"
+    FROM PD2023_WK03_TARGETS
+    UNPIVOT INCLUDE NULLS ("Quarterly Targets" for "Quarter" in (Q1,Q2,Q3,Q4))
+)
+SELECT online_or_in_person,
+    "Quarterly Targets",
+    TO_NUMBER(REPLACE("Quarter",'Q','')) AS "Quarter"
