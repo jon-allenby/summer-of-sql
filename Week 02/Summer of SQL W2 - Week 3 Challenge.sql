@@ -126,3 +126,47 @@ SELECT online_or_in_person,
     "Quarterly Targets",
     TO_NUMBER(REPLACE("Quarter",'Q','')) AS "Quarter"
 FROM TARGETS_CTE;
+
+-- Retrying the join
+
+WITH Targets_CTE AS 
+(
+    SELECT online_or_in_person,
+        "Quarterly Targets",
+        "Quarter"
+    FROM PD2023_WK03_TARGETS
+    UNPIVOT INCLUDE NULLS ("Quarterly Targets" for "Quarter" in (Q1,Q2,Q3,Q4))
+)
+SELECT 
+    SUM(VALUE),
+    EXTRACT( quarter FROM DATE(split_part(transaction_date,' ',1),'dd/mm/yyyy')) AS QT
+FROM PD2023_WK01 AS TR
+JOIN TARGETS_CTE AS CTE ON TR.QT = TO_NUMBER(REPLACE(CTE.Quarter,'Q','')); --Error: invalid identifier 'TR.QT' (line 144)
+
+
+-- Hang on. Is order of operations doing me over here?
+
+WITH Targets_CTE AS 
+(
+    SELECT online_or_in_person,
+        "Quarterly Targets",
+        "Quarter"
+    FROM PD2023_WK03_TARGETS
+    UNPIVOT INCLUDE NULLS ("Quarterly Targets" for "Quarter" in (Q1,Q2,Q3,Q4))
+),
+Transactions_CTE AS
+(
+    SELECT CASE 
+            WHEN online_or_in_person = 1 
+                THEN 'Online'
+                ELSE 'In-Person'
+        END AS "Online or In-Person",
+        EXTRACT( quarter FROM DATE(split_part(transaction_date,' ',1),'dd/mm/yyyy')) AS "Quarter",
+        SUM(value) AS Value
+    FROM PD2023_WK01
+    WHERE SPLIT_PART(transaction_code,'-',1) = 'DSB'
+    GROUP BY ONLINE_OR_IN_PERSON, "Quarter"
+)
+SELECT *
+FROM Transactions_CTE AS TR
+JOIN Targets_CTE AS TA ON TR.Quarter = TO_NUMBER(REPLACE(CTE.Quarter,'Q','')); -- Error: invalid identifier 'TR.QUARTER' (line 172)
