@@ -278,4 +278,132 @@ SELECT ID,
     "'Date of Birth'" AS "Date of Birth",
     "'Ethnicity'" AS "Ethnicity"
 FROM BigUnion
-PIVOT( MAX(VALUE) FOR DEMOGRAPHIC IN (ANY ORDER BY DEMOGRAPHIC) );
+PIVOT( MAX(VALUE) FOR DEMOGRAPHIC IN (ANY ORDER BY DEMOGRAPHIC) )
+ORDER BY ID;
+
+-- Just realised there might be duplicates. Lets check UNION ALL?
+
+WITH BigUnion AS (
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-01-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_JANUARY
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-02-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_FEBRUARY
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-03-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_MARCH
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-04-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_APRIL
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-05-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_MAY
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-06-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_JUNE
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-07-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_JULY
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-08-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_AUGUST
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-09-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_SEPTEMBER
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-10-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_OCTOBER
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-11-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_NOVEMBER
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-12-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_DECEMBER
+) 
+SELECT ID,
+MIN(Joining_date) AS Min_Date,
+MAX(Joining_date) AS Max_Date,
+Min_Date = Max_Date AS MyBool
+    
+/*ID,
+    JOINING_DATE AS "Joining Date",
+    "'Account Type'" AS "Account Type",
+    "'Date of Birth'" AS "Date of Birth",
+    "'Ethnicity'" AS "Ethnicity" */
+FROM BigUnion
+//PIVOT( MIN(VALUE) FOR DEMOGRAPHIC IN (ANY ORDER BY DEMOGRAPHIC) );
+GROUP BY ID;
+//This shows that we have one ID (878212) with a Min Date of 2023-12-08 and a Max date of 2023-12-22
+
+-- Checking the pivots above reveals it appears as two different rows. In that case surely we can use a Min function
+
+WITH BigUnion AS (
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-01-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_JANUARY
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-02-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_FEBRUARY
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-03-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_MARCH
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-04-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_APRIL
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-05-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_MAY
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-06-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_JUNE
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-07-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_JULY
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-08-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_AUGUST
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-09-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_SEPTEMBER
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-10-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_OCTOBER
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-11-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_NOVEMBER
+UNION
+SELECT *,
+    TO_DATE(JOINING_DAY::string || '-12-2023','DD-MM-YYYY') AS Joining_Date
+FROM PD2023_WK04_DECEMBER
+) 
+SELECT ID,
+    MIN(JOINING_DATE) AS "Joining Date",
+    "'Account Type'" AS "Account Type",
+    "'Date of Birth'" AS "Date of Birth",
+    "'Ethnicity'" AS "Ethnicity"
+FROM BigUnion
+PIVOT( MAX(VALUE) FOR DEMOGRAPHIC IN (ANY ORDER BY DEMOGRAPHIC) )
+GROUP BY ID, "Account Type", "Date of Birth", "Ethnicity"
+ORDER BY ID;
