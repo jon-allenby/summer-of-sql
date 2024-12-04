@@ -1,0 +1,233 @@
+/* 
+Case Study Questions
+This case study is split into an initial data understanding question before diving straight into data analysis questions before finishing with 1 single extension challenge.
+*/
+
+/*
+A. Customer Journey
+Based off the 8 sample customers provided in the sample from the subscriptions table, write a brief description about each customer’s onboarding journey.
+
+Try to keep it as short as possible - you may also want to run some sort of join to make your explanations a bit easier!
+*/
+
+/*
+Cust 1: Moved from trial to basic after 1 week.
+Cust 2: Moved from trial to pro annual after 1 week.
+Cust 11: Cancelled trial after 1 week.
+Cust 13: Moved from trial to basic after 1 week, then pro monthly about 4 months later.
+Cust 15: Moved from trial to pro monthly after 1 week.
+Cust 16: Moved from trial to basic after 1 week, then up to pro annual about 4.5 months.
+Cust 18: Moved from trial to pro monthly after 1 week.
+Cust 19: Moved from trial to pro monthly after 1 week, then up to pro annual after 2 months.
+*/
+
+/*
+B. Data Analysis Questions
+
+1) How many customers has Foodie-Fi ever had?
+2) What is the monthly distribution of trial plan start_date values for our dataset - use the start of the month as the group by value
+3) What plan start_date values occur after the year 2020 for our dataset? Show the breakdown by count of events for each plan_name
+4) What is the customer count and percentage of customers who have churned rounded to 1 decimal place?
+5) How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?
+6) What is the number and percentage of customer plans after their initial free trial?
+7) What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?
+8) How many customers have upgraded to an annual plan in 2020?
+9) How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi?
+10) Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc)
+11) How many customers downgraded from a pro monthly to a basic monthly plan in 2020?
+
+*/
+
+-- Review Data
+
+SELECT *
+FROM plans;
+
+SELECT *
+FROM subscriptions;
+
+-- Basic Join
+
+SELECT *
+FROM plans AS p
+JOIN subscriptions as s on p.plan_id = s.plan_id;
+
+-- Q1
+-- How many customers has Foodie-Fi ever had?
+
+SELECT COUNT(DISTINCT Customer_ID)
+FROM SUBSCRIPTIONS;
+--1000
+
+-- Q2
+-- What is the monthly distribution of trial plan start_date values for our dataset - use the start of the month as the group by value
+
+SELECT EXTRACT(month FROM START_DATE) as Month,
+    COUNT(Month) AS Count
+FROM subscriptions
+WHERE PLAN_ID = 0
+GROUP BY Month
+ORDER BY Month;
+--Jan  ||  88
+--Feb  ||  68
+--Mar  ||  94
+--Apr  ||  81
+--May  ||  88
+--Jun  ||  79
+--Jul  ||  89
+--Aug  ||  88
+--Sep  ||  87
+--Oct  ||  79
+--Nov  ||  75
+--Dec  ||  84
+
+-- Alternate translation of the question:
+
+SELECT DATE_TRUNC('month',start_date) as Month,
+    COUNT(Month) AS Count
+FROM subscriptions
+WHERE PLAN_ID = 0
+GROUP BY Month
+ORDER BY Month;
+--Didnt matter, all trials started in 2020.
+
+-- Q3
+-- What plan start_date values occur after the year 2020 for our dataset? Show the breakdown by count of events for each plan_name
+
+SELECT plan_name,
+    start_date,
+FROM plans AS p
+JOIN subscriptions as s on p.plan_id = s.plan_id
+WHERE EXTRACT(year FROM start_date) > 2020
+ORDER BY plan_name, start_date;
+
+SELECT plan_name,
+    COUNT(*),
+FROM plans AS p
+JOIN subscriptions as s on p.plan_id = s.plan_id
+WHERE EXTRACT(year FROM start_date) > 2020
+GROUP BY PLAN_NAME;
+--basic monthly     8
+--pro monthly       60
+--pro annual        63
+--churn             71
+
+-- Q4
+-- What is the customer count and percentage of customers who have churned rounded to 1 decimal place?
+
+--churn = 4
+--check logic for counting churn
+SELECT CUSTOMER_ID,
+    CASE
+    WHEN MAX(PLAN_ID) = 4
+        THEN 1
+        ELSE 0
+    END AS Churn_Flag,
+FROM subscriptions
+GROUP BY CUSTOMER_ID;
+
+-- Glanced at Will's hint and discovered that subqueries aren't effected by the final WHERE clause.
+SELECT COUNT(DISTINCT CUSTOMER_ID) AS ChurnedCustomers,
+    (SELECT COUNT(DISTINCT CUSTOMER_ID) FROM SUBSCRIPTIONS) AS TotalCustomers
+FROM SUBSCRIPTIONS
+WHERE PLAN_ID = 4;
+
+--Bring it together
+SELECT (SELECT COUNT(DISTINCT CUSTOMER_ID) FROM SUBSCRIPTIONS) AS TotalCustomers,
+    ROUND(COUNT(DISTINCT CUSTOMER_ID) / TotalCustomers, 1) AS ChurnPercentageDec,
+    ROUND((COUNT(DISTINCT CUSTOMER_ID) / TotalCustomers)*100,1) AS ChurnPercentageInt
+FROM SUBSCRIPTIONS
+WHERE PLAN_ID = 4;
+--Unclear if they wanted 1dp at the decimal or integer level.
+--30.7% churn.
+
+-- Q5
+-- How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?
+
+--just getting a general vibe
+SELECT CUSTOMER_ID,
+    CASE
+    WHEN MAX(PLAN_ID) = 4 AND SUM(PLAN_ID) = 4
+        THEN 1
+        ELSE 0
+    END AS Churn_Flag,
+FROM subscriptions
+GROUP BY CUSTOMER_ID;
+
+--trying some stuff
+
+SELECT COUNT(DISTINCT CUSTOMER_ID) AS TotalCustomers,
+    (
+        SELECT SUM(CHURN_FLAG) FROM
+            (
+                SELECT 
+                    CASE
+                        WHEN MAX(PLAN_ID) = 4 AND SUM(PLAN_ID) = 4
+                        THEN 1
+                        ELSE 0
+                    END AS Churn_Flag,
+                FROM subscriptions
+                GROUP BY CUSTOMER_ID
+            )
+    ) AS ChurnCount
+FROM SUBSCRIPTIONS;
+
+--bring it in as a percentage
+
+SELECT COUNT(DISTINCT CUSTOMER_ID) AS TotalCustomers,
+    (
+        SELECT SUM(CHURN_FLAG) FROM
+            (
+                SELECT 
+                    CASE
+                        WHEN MAX(PLAN_ID) = 4 AND SUM(PLAN_ID) = 4
+                        THEN 1
+                        ELSE 0
+                    END AS Churn_Flag,
+                FROM subscriptions
+                GROUP BY CUSTOMER_ID
+            )
+    ) AS ChurnCount,
+    ROUND((ChurnCount / TotalCustomers)*100,1) AS InstantChurnPercent
+FROM SUBSCRIPTIONS;
+-- 9.2% instant churn rate
+
+-- Q6
+-- What is the number and percentage of customer plans after their initial free trial?
+
+-- I'm gonna take this to mean where do customers go directly after their free-trial.
+-- This gets the min plan ID for each cust.
+SELECT MIN(PLAN_ID) AS NextPlan
+FROM SUBSCRIPTIONS
+WHERE PLAN_ID != 0 
+GROUP BY CUSTOMER_ID;
+
+-- Now we just group by each Plan ID
+
+SELECT NextPlan,
+    (SELECT COUNT(DISTINCT CUSTOMER_ID) FROM SUBSCRIPTIONS) AS TotalCustomers,
+    COUNT(NextPlan) FROM (
+        SELECT MIN(PLAN_ID) AS NextPlan
+        FROM SUBSCRIPTIONS
+        WHERE PLAN_ID != 0 
+        GROUP BY CUSTOMER_ID
+    ) AS NextPlanCount
+GROUP BY NextPlan;
+
+-- Finally add math.
+
+SELECT NextPlan,
+    COUNT(NextPlan) AS NextPlanCount,
+    ROUND((NextPlanCount / (SELECT COUNT(DISTINCT CUSTOMER_ID) FROM SUBSCRIPTIONS))*100,1) AS NextPlanPct, --I just think it looks cleaner in the result
+FROM (
+    SELECT MIN(PLAN_ID) AS NextPlan
+    FROM SUBSCRIPTIONS
+    WHERE PLAN_ID != 0 
+    GROUP BY CUSTOMER_ID
+) 
+GROUP BY NextPlan
+ORDER BY NextPlan;
+-- 1    546     54.6%
+-- 2    325     32.5%
+-- 3    37       3.7%
+-- 4    92       9.2%
